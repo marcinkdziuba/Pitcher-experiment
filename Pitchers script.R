@@ -11,6 +11,8 @@ library(cowplot)
 library(patchwork)
 library(betareg)
 library(dunn.test)
+library(nlme)
+library(car)
 
 ###############################################################################
 ################ INDIVIDUAL LEVEL EXP #########################################
@@ -200,10 +202,46 @@ combined_plot_LT <- REP1 + LSplot + plot_layout(widths = c(2, 1)) +
 combined_plot_LT <- combined_plot_LT & theme(plot.tag = element_text(size = 28))
 ggsave("Fig1.png",combined_plot_LT, width = 12, height = 6) 
 
+############ AGE AT REPRODUCTION ###############################
 
+repMGvM_4C<-repMGvM[repMGvM$clutch<5,] # create a new database by subsetting first four clutches
+                                       # of the individual-level experiment
+repageSE<-summarySE(data=repMGvM_4C, measurevar = "age", groupvars = c("fclutch","parasite"))
+
+varId<-varIdent(form = ~1 | parasite)
+M_lme <- lme(age ~ parasite ,
+             random = ~1 | clutch,         # use your grouping variable here
+             data = repMGvM_4C,
+             weights = varId)
+summary(M_lme)
+anova(M_lme)
+
+plot(M_lme)
+qqPlot(M_lme$resid)
+emm_M_lme <- emmeans(M_lme, ~ parasite)
+contrast(emm_M_lme, method = "pairwise", adjust = "bonferroni")
+emmip(M_lme, ~ parasite)
+
+### FIGURE ###
+AgePlot<-
+  ggplot(repageSE,aes(x=fclutch,y=age,color=parasite))+
+  geom_point(position = position_dodge(.8))+
+  geom_errorbar(aes(ymin=age-se,ymax=age+se),position = position_dodge(.8))+
+  scale_colour_manual(values = c('dodgerblue', 'red','darkorange'))+
+  scale_y_continuous(limits = c(5,20),name="Age at reproduction")+
+  scale_x_discrete(name="# clutch")+
+  theme_classic()+
+  theme(legend.position = c(0.15,0.8),
+        axis.title = element_text(size = 14, color = "black"),
+        axis.text = element_text(size = 14, color = "black"),
+        legend.title = element_text(size = 14, color = "black"),
+        legend.text = element_text(size = 14, color = "black"))+
+  labs(color="Parasite")
+AgePlot
+ggsave("FigS1.png",AgePlot, width = 4, height = 4) 
 
 ###############################################################################
-################ POPULATION EXPERIMENT ##############################################
+################ POPULATION EXPERIMENT ########################################
 ###############################################################################
 
 # loading database
@@ -660,79 +698,56 @@ algaedat<-full_data[c("treatment","day","rep","density","algae")]
 # Make new variable "day" as factor
 algaedat$fday<-as.factor(algaedat$day)
 
-# Run a non-parametric Kruskal-Wallis test for each day sepearately, followed by 
-# a post-hoc Dunn test when interactions are significant
+#get rid of day 0
+algaedatNo0<-algaedat[algaedat$day>0,]
 
-alg_Krus_D9<-kruskal.test(algae[algaedat$fday=="9"]~treatment[algaedat$fday=="9"],data = algaedat)
-alg_Krus_D9
+# GAM model with Tweedie distribution
+gam_mod <- gam(algae ~  treatment +
+                 s(day, by = as.numeric(treatment == "C")) + 
+                 s(day, by = as.numeric(treatment == "MB")) +
+                 s(day, by = as.numeric(treatment == "OP")) + 
+                 s(day, by = as.numeric(treatment == "OPMB")), 
+               family = tw(link = "log"), 
+               data = algaedatNo0)
+summary(gam_mod)
+anova(gam_mod)
+plot(gam_mod$residuals)
 
-alg_Krus_D16<-kruskal.test(algae[algaedat$fday=="16"]~treatment[algaedat$fday=="16"],data = algaedat)
-alg_Krus_D16
+alg_gam <- emmeans(gam_mod, ~ treatment | day, at = list(day = seq(min(algaedatNo0$day), max(algaedatNo0$day), by = 1)))
+contrast(alg_gam, method = "pairwise", adjust = "bonferroni") # pairwise contrast comparison with bonferroni correction
+contrasts_alg_gam<-contrast(alg_gam, method = "pairwise", adjust = "bonferroni")
 
-alg_Krus_D23<-kruskal.test(algae[algaedat$fday=="23"]~treatment[algaedat$fday=="23"],data = algaedat)
-alg_Krus_D23
-dunn.test(algaedat$algae[algaedat$fday=="23"], algaedat$treatment[algaedat$fday=="23"], method = "bonferroni")
-
-
-alg_Krus_D30<-kruskal.test(algae[algaedat$fday=="30"]~treatment[algaedat$fday=="30"],data = algaedat)
-alg_Krus_D30
-dunn.test(algaedat$algae[algaedat$fday=="30"], algaedat$treatment[algaedat$fday=="30"], method = "bonferroni")
-
-alg_Krus_D37<-kruskal.test(algae[algaedat$fday=="37"]~treatment[algaedat$fday=="37"],data = algaedat)
-alg_Krus_D37
-dunn.test(algaedat$algae[algaedat$fday=="37"], algaedat$treatment[algaedat$fday=="37"], method = "bonferroni")
-
-alg_Krus_D44<-kruskal.test(algae[algaedat$fday=="44"]~treatment[algaedat$fday=="44"],data = algaedat)
-alg_Krus_D44
-dunn.test(algaedat$algae[algaedat$fday=="44"], algaedat$treatment[algaedat$fday=="44"], method = "bonferroni")
-
-alg_Krus_D51<-kruskal.test(algae[algaedat$fday=="51"]~treatment[algaedat$fday=="51"],data = algaedat)
-alg_Krus_D51
-dunn.test(algaedat$algae[algaedat$fday=="51"], algaedat$treatment[algaedat$fday=="51"], method = "bonferroni")
-
-alg_Krus_D58<-kruskal.test(algae[algaedat$fday=="58"]~treatment[algaedat$fday=="58"],data = algaedat)
-alg_Krus_D58
-
-alg_Krus_D65<-kruskal.test(algae[algaedat$fday=="65"]~treatment[algaedat$fday=="65"],data = algaedat)
-alg_Krus_D65
-
-alg_Krus_D72<-kruskal.test(algae[algaedat$fday=="72"]~treatment[algaedat$fday=="72"],data = algaedat)
-alg_Krus_D72
-
-alg_Krus_D79<-kruskal.test(algae[algaedat$fday=="79"]~treatment[algaedat$fday=="79"],data = algaedat)
-alg_Krus_D79
-dunn.test(algaedat$algae[algaedat$fday=="79"], algaedat$treatment[algaedat$fday=="79"], method = "bonferroni")
-
-alg_Krus_D86<-kruskal.test(algae[algaedat$fday=="86"]~treatment[algaedat$fday=="86"],data = algaedat)
-alg_Krus_D86
-
-alg_Krus_D93<-kruskal.test(algae[algaedat$fday=="93"]~treatment[algaedat$fday=="93"],data = algaedat)
-alg_Krus_D93
-dunn.test(algaedat$algae[algaedat$fday=="93"], algaedat$treatment[algaedat$fday=="93"], method = "bonferroni")
+# Exporting post-hoc comparisons into .csv files
+pairwise_comparisons_algae_gam <- as.data.frame(summary(contrasts_alg_gam))
+write.csv(pairwise_comparisons_algae_gam, file = "pairwise_comparisons_algae_gam.csv", row.names = FALSE)
 
 ##### FIGURE ####
 
-ALGplot<-
-ggplot(data=algaedat, aes(x=fday, y=algae, fill = treatment))+
-  geom_boxplot(size =0.5 )+
-  scale_fill_manual(values = c('dodgerblue', 'red','darkorange','green3'))+
-  scale_y_continuous(limits = c(0,50),expand = c(0,0),name = "Algae concentration [μg chl-a/l]")+
-  scale_x_discrete(name = "Day", expand=c(0,0))+
-  annotate("text", x=4, y=10, label= "*",size = 12,color = "red") +
-  annotate("text", x=5, y=15, label= "*",size = 12,color = "red") +
-  annotate("text", x=6, y=20, label= "*",size = 12,color = "red") +
-  annotate("text", x=7, y=30, label= "*",size = 12,color = "red") +
-  annotate("text", x=8, y=40, label= "*",size = 12,color = "red") +
-  annotate("text", x=14, y=20, label= "*",size = 12,color = "red") +
+fitalg <- expand.grid(day = seq(min(algaedatNo0$day), max(algaedatNo0$day), length.out = 1000),
+                      treatment = levels(algaedatNo0$treatment))
+# create new column with densities predicted for each timepoint using the GAM model
+predictions_alg <- predict(gam_mod, newdata = fitalg, se.fit = TRUE, type="response")
+fitalg$alg <- predictions_alg$fit
+fitalg$se <- predictions_alg$se.fit
+
+algGAMplot<-
+  ggplot(fitalg, aes(x=day,y=alg,group = treatment,color = treatment))+
+  geom_smooth(data=fitalg,aes(ymin=alg-se, ymax=alg+se),stat='identity',alpha = .3)+
+  scale_colour_manual(values = c('dodgerblue', 'red','darkorange','green3'))+
+  geom_rect(data=fitalg, mapping=aes(xmin=25, xmax=64, ymin=16.8, ymax=17), fill="green3", color="green3", alpha=0.5) +
+  geom_rect(data=fitalg, mapping=aes(xmin=77.5, xmax=78.5, ymin=16.8, ymax=17), fill="dodgerblue", color="green3", alpha=0.5) +
+  geom_rect(data=fitalg, mapping=aes(xmin=29, xmax=56, ymin=16.4, ymax=16.6), fill="darkorange", color="darkorange", alpha=0.5) +
+  geom_rect(data=fitalg, mapping=aes(xmin=67, xmax=84, ymin=16.4, ymax=16.6), fill="dodgerblue", color="darkorange", alpha=0.5) +
+  geom_rect(data=fitalg, mapping=aes(xmin=70, xmax=84, ymin=16, ymax=16.2), fill="dodgerblue", color="red", alpha=0.5) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,17), name = "Algae concentration [μg chl-a/l]")+
+  scale_x_continuous(breaks=c(9,30,60,90),expand = c(0,0),limits = c(9,93), name = "Day")+
   theme_classic()+
-  theme(legend.position = c(0.15,0.8),
+  theme(legend.position = c(0.8,0.7),
         axis.title = element_text(size = 14, color = "black"),
         axis.text = element_text(size = 14, color = "black"),
         legend.title = element_text(size = 14, color = "black"),
         legend.text = element_text(size = 14, color = "black"))+
-  labs(fill="Treatment")
-ALGplot
+  labs(color="Treatment")
 
-ggsave("FigS1.png",ALGplot, width = 6, height = 4) 
-
-
+algGAMplot
+ggsave("FigS2.png",algGAMplot, width = 8, height = 6) 
