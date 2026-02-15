@@ -158,11 +158,11 @@ LSM3<-gls(lifespan~parasite, data=mortMGvM, weights = varIDMort)
 anova(LSM3)
 summary(LSM3)
 #diagnostics
-hist(resid(LSM))
-plot(LSM)
+hist(resid(LSM3))
+plot(LSM3)
 
 #contrasts
-emmLSM <- emmeans(LSM, ~ parasite)
+emmLSM <- emmeans(LSM3, ~ parasite)
 contrast(emmLSM, method = "pairwise", adjust = "bonferroni")
 
 # the model has some small overdispersion, so just for safety let's analyze the same data
@@ -195,12 +195,13 @@ LSplot<-
         legend.text = element_text(size = 14, color = "black"))+
   labs(fill="Treatment", color = "Treatment")
 
+REP1 <- REP1 + theme(plot.tag = element_text(size = 28))
+LSplot <- LSplot + theme(plot.tag = element_text(size = 28))
 
-
-combined_plot_LT <- REP1 + LSplot + plot_layout(widths = c(2, 1)) + 
+combined_plot_LT <- REP1 + LSplot + plot_layout(widths = c(2, 1))+
   plot_annotation(tag_levels = 'A')
-combined_plot_LT <- combined_plot_LT & theme(plot.tag = element_text(size = 28))
-ggsave("Fig1.png",combined_plot_LT, width = 12, height = 6) 
+combined_plot_LT
+ggsave("Fig1.tiff",combined_plot_LT, width = 8, height = 4,dpi=300) 
 
 ############ AGE AT REPRODUCTION ###############################
 
@@ -238,7 +239,7 @@ AgePlot<-
         legend.text = element_text(size = 14, color = "black"))+
   labs(color="Parasite")
 AgePlot
-ggsave("FigS1.png",AgePlot, width = 4, height = 4) 
+ggsave("FigS1.tiff",AgePlot, width = 4, height = 4, dpi=300) 
 
 ###############################################################################
 ################ POPULATION EXPERIMENT ########################################
@@ -517,12 +518,12 @@ ggplot(fitted_23, aes(x=day,y=density,group = treatment,color = treatment))+
   labs(color="Treatment")
 DENSplot
 
+GRplot <- GRplot + theme(plot.tag = element_text(size = 28))
+DENSplot <- DENSplot + theme(plot.tag = element_text(size = 28))
 combined_plot <- GRplot + DENSplot +  plot_layout(widths = c(1, 3)) + 
   plot_annotation(tag_levels = 'A')
-combined_plot <- combined_plot & theme(plot.tag = element_text(size = 28))
 combined_plot
-ggsave("Fig2.png",combined_plot, width = 12, height = 6) 
-
+ggsave("Fig2.tiff",combined_plot, width = 8, height = 4,dpi = 300)
 
 ###############################################################################
 ################ M. bicuspidata prevalence ####################################
@@ -631,11 +632,12 @@ ggplot(data_OPprev, aes(x=day,y=OPprev,group = treatment, color = treatment, sha
         legend.text = element_text(size = 14, color = "black"))+
   labs(color="Treatment", shape="Treatment")
 
+MBplot <- MBplot + theme(plot.tag = element_text(size = 28))
+OPplot <- OPplot + theme(plot.tag = element_text(size = 28))
 combined_plot2 <- MBplot + OPplot + plot_layout(heights = c(1, 1)) + 
   plot_annotation(tag_levels = 'A')
-combined_plot2 <- combined_plot2 & theme(plot.tag = element_text(size = 28))
 combined_plot2
-ggsave("Fig3.png",combined_plot2, width = 6, height = 8) 
+ggsave("Fig4.tiff",combined_plot2, width = 5, height = 7, dpi=300) 
 
 
 ###########################################################################
@@ -684,7 +686,7 @@ ggplot(JRM1, aes(x = day, y = juvrat, group=treatment,fill = "grey")) +
         legend.text = element_text(size = 14, color = "black"))+
   labs(color="Treatment")
 JRplot
-ggsave("Fig4.png",JRplot, width = 6, height = 4) 
+ggsave("Fig3.tiff",JRplot, width = 6, height = 4, dpi=300) 
 
 
 ###############################################################################
@@ -750,4 +752,4 @@ algGAMplot<-
   labs(color="Treatment")
 
 algGAMplot
-ggsave("FigS2.png",algGAMplot, width = 8, height = 6) 
+ggsave("FigS2.tiff",algGAMplot, width = 8, height = 6,dpi = 300) 
